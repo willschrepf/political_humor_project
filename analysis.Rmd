@@ -1,0 +1,19 @@
+---
+title: "analysis"
+author: "Will Schrepferman"
+date: "12/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot)
+```
+
+
+
+```{r}
+
+```
+
