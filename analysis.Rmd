@@ -8,12 +8,204 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(ggplot)
+library(ggplot2)
+library(syuzhet)
+library(janitor)
+library(tidytext)
+library(infer)
 ```
 
 
 
-```{r}
+```{r read_data}
+# read in initial data from the python scrape
+colbert <- read_csv("data/StephenAtHome.csv") %>%
+  clean_names() %>%
+  select(-x1)
+noah <- read_csv("data/Trevornoah.csv") %>%
+  clean_names() %>%
+  select(-x1)
+bee <- read_csv("data/iamsambee.csv") %>%
+  clean_names() %>%
+  select(-x1)
+philipps <- read_csv("data/BusyPhilipps.csv") %>%
+  clean_names() %>%
+  select(-x1)
+onion <- read_csv("data/OnionPolitics.csv") %>%
+  clean_names() %>%
+  select(-x1)
+
+gutfeld <- read_csv("data/greggutfeld.csv") %>%
+  clean_names() %>%
+  select(-x1)
+crowder <- read_csv("data/scrowder.csv") %>%
+  clean_names() %>%
+  select(-x1)
+trumpjr <- read_csv("data/DonaldJTrumpJr.csv") %>%
+  clean_names() %>%
+  select(-x1)
+silk <- read_csv("data/DiamondandSilk.csv") %>%
+  clean_names() %>%
+  select(-x1)
+babylon <- read_csv("data/TheBabylonBee.csv") %>%
+  clean_names() %>%
+  select(-x1)
+
+warren <- read_csv("data/ewarren.csv") %>%
+  clean_names() %>%
+  select(-x1)
+aoc <- read_csv("data/AOC.csv") %>%
+  clean_names() %>%
+  select(-x1)
+booker <- read_csv("data/CoryBooker.csv") %>%
+  clean_names() %>%
+  select(-x1)
+pelosi <- read_csv("data/SpeakerPelosi.csv") %>%
+  clean_names() %>%
+  select(-x1)
+omar <- read_csv("data/IlhanMN.csv") %>%
+  clean_names() %>%
+  select(-x1)
+
+cruz <- read_csv("data/tedcruz.csv") %>%
+  clean_names() %>%
+  select(-x1)
+rubio <- read_csv("data/marcorubio.csv") %>%
+  clean_names() %>%
+  select(-x1)
+paul <- read_csv("data/RandPaul.csv") %>%
+  clean_names() %>%
+  select(-x1)
+romney <- read_csv("data/MittRomney.csv") %>%
+  clean_names() %>%
+  select(-x1)
+mccarthy <- read_csv("data/GOPLeader.csv") %>%
+  clean_names() %>%
+  select(-x1)
+```
+
+```{r combine_data}
+# combine data into relevant categories for analysis
+
+liberal_comedians <- bind_rows(colbert, noah, bee, philipps, onion)
+conservative_comedians <- bind_rows(gutfeld, crowder, trumpjr, silk, babylon)
+
+liberal_pols <- bind_rows(warren, aoc, booker, pelosi, omar)
+conservative_pols <- bind_rows(cruz, rubio, paul, romney, mccarthy)
+```
+
+```{r text_preprocessing}
+# tokenizing and preprocessing text for analysis
+
+# tokenizing:
+lc_tweets <- liberal_comedians %>%
+  select(text) %>%
+  unnest_tokens(word, text) %>%
+  
+  # every tweet contains a url; remove this:
+  
+  filter(word != "t.co") %>%
+  filter(word != "https")
+
+cc_tweets <- conservative_comedians %>%
+  select(text) %>%
+  unnest_tokens(word, text) %>%
+  filter(word != "t.co") %>%
+  filter(word != "https")
+
+lp_tweets <- liberal_pols %>%
+  select(text) %>%
+  unnest_tokens(word, text) %>%
+  filter(word != "t.co") %>%
+  filter(word != "https")
+
+cp_tweets <- conservative_pols %>%
+  select(text) %>%
+  unnest_tokens(word, text) %>%
+  filter(word != "t.co") %>%
+  filter(word != "https")
+
+# converting to ASCII:
+Liberal_Comedians <- iconv(lc_tweets, from="UTF-8", to="ASCII", sub="")
+Conservative_Comedians <- iconv(cc_tweets, from="UTF-8", to="ASCII", sub="")
+Liberal_Politicians <- iconv(lp_tweets, from="UTF-8", to="ASCII", sub="")
+Conservative_Politicians <- iconv(cp_tweets, from="UTF-8", to="ASCII", sub="")
 
 ```
+
+```{r emotion_data}
+# function using syuzhet emotional sentiment analysis tools
+
+get_emotion_plot <- function(vector){
+  
+  ew_sentiment <- get_nrc_sentiment((vector))
+  
+  sentimentscores <- data.frame(colSums(ew_sentiment[,]))
+  
+  names(sentimentscores)<- "Score"
+  
+  sentimentscores <- cbind("sentiment"=rownames(sentimentscores),sentimentscores)
+  
+  rownames(sentimentscores) <- NULL
+  
+  plot <- ggplot(data=sentimentscores,aes(x=sentiment,y=Score))+
+    geom_bar(aes(fill=sentiment),stat = "identity")+
+    theme(legend.position="none")+
+    xlab("Sentiments")+ylab("Scores")+
+    ggtitle(paste("Total sentiment based on scores for group:", deparse(substitute(vector))))+
+    theme_minimal() +
+    ylim(0,1100) +
+    theme(axis.text = element_text(size = 7))
+    
+  
+  print(plot)
+}
+
+get_emotion_plot(Liberal_Comedians)
+get_emotion_plot(Conservative_Comedians)
+get_emotion_plot(Liberal_Politicians)
+get_emotion_plot(Conservative_Politicians)
+```
+
+```{r statistical_significance}
+# using a chi squared test to assess statistical significance across categories
+
+lc_sentiment <- get_nrc_sentiment((Liberal_Comedians)) %>%
+  mutate(group = "liberal_comedians")
+cc_sentiment <- get_nrc_sentiment((Conservative_Comedians)) %>%
+  mutate(group = "conservative_comedians")
+lp_sentiment <- get_nrc_sentiment((Liberal_Politicians)) %>%
+  mutate(group = "liberal_politicians")
+cp_sentiment <- get_nrc_sentiment((Conservative_Politicians)) %>%
+  mutate(group = "conservative_politicians")
+
+# creating groups to compare
+
+comedians <- bind_rows(lc_sentiment, cc_sentiment)
+
+politicians <- bind_rows(lp_sentiment, cp_sentiment)
+
+liberals <- bind_rows(lc_sentiment, lp_sentiment)
+
+conservatives <- bind_rows(cc_sentiment, cp_sentiment)
+
+full_data <- bind_rows(lc_sentiment, cc_sentiment, lp_sentiment, cp_sentiment)
+
+# transposing the matrix (not needed with tidy chi squared method)
+
+#flipped_data <- full_data %>% 
+#    rownames_to_column %>%
+#    gather(variable, value, -rowname) %>% 
+#    spread(rowname, value)
+
+#colnames(flipped_data) <- c("emotion", "liberal_comedians",  "conservative_comedians", "liberal_politicians", "conservative politicians")
+
+
+chisq.test(comedians %>% select(-group))
+
+```
+
+
+
+
 
