@@ -1,0 +1,23 @@
+---
+title: "initial_data"
+author: "Will Schrepferman"
+date: "12/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rtweet)
+```
+
+
+
+```{r}
+twitter_token <- create_token(
+  app = "first_app_ws31",
+  consumer_key = "tdM1y2U8ld80EFac0rehjQQE6",
+  consumer_secret = "QY2dYwVNuOELvQjxjjxksorhLPGR5YusYXSICoRJcnvFKaFrIn",
+  set_renv = TRUE)
+```
+
